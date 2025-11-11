@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserPlus, UserMinus } from 'lucide-react';
+import { Loader2, UserPlus, UserMinus } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/context/AuthContext';
@@ -12,13 +12,22 @@ import { PostCard } from '@/components/PostCard';
 const Profile = () => {
   const { id } = useParams();
   const { user } = useAuth();
-  const { getUserById, followUser, users } = useUsers();
+  const { getUserById, followUser, loading: usersLoading } = useUsers();
   const { posts, likePost } = usePosts();
   
   const profileUser = getUserById(id!);
   const userPosts = posts.filter(p => p.authorId === id);
   const isOwnProfile = user?.id === id;
   const isFollowing = user && profileUser?.followers.includes(user.id);
+
+  if (usersLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground gap-3">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span>Loading profile...</span>
+      </div>
+    );
+  }
 
   if (!profileUser) {
     return <div className="container py-8">User not found</div>;

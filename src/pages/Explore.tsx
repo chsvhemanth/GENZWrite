@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useUsers } from '@/hooks/useUsers';
 import { PostCard } from '@/components/PostCard';
@@ -11,8 +11,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Link } from 'react-router-dom';
 
 const Explore = () => {
-  const { posts, likePost } = usePosts();
-  const { users } = useUsers();
+  const { posts, likePost, loading: postsLoading } = usePosts();
+  const { users, loading: usersLoading } = useUsers();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -31,6 +31,8 @@ const Explore = () => {
     u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const loading = postsLoading || usersLoading;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-4xl py-8 space-y-8">
@@ -47,7 +49,14 @@ const Explore = () => {
           </div>
         </div>
 
-        {!searchQuery && (
+        {loading && (
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p>Loading explore content...</p>
+          </div>
+        )}
+
+        {!loading && !searchQuery && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Popular Tags</h2>
             <div className="flex flex-wrap gap-2">
@@ -65,7 +74,7 @@ const Explore = () => {
           </div>
         )}
 
-        {searchQuery && filteredUsers.length > 0 && (
+        {!loading && searchQuery && filteredUsers.length > 0 && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Writers</h2>
             <div className="grid gap-4">
@@ -89,26 +98,28 @@ const Explore = () => {
           </div>
         )}
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">
-            {searchQuery ? 'Search Results' : 'Trending Posts'}
-          </h2>
-          <div className="space-y-6">
-            {filteredPosts.map(post => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onLike={() => user && likePost(post.id, user.id)}
-                onComment={() => {}}
-              />
-            ))}
-            {filteredPosts.length === 0 && (
-              <p className="text-center text-muted-foreground py-12">
-                No results found
-              </p>
-            )}
+        {!loading && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">
+              {searchQuery ? 'Search Results' : 'Trending Posts'}
+            </h2>
+            <div className="space-y-6">
+              {filteredPosts.map(post => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onLike={() => user && likePost(post.id, user.id)}
+                  onComment={() => {}}
+                />
+              ))}
+              {filteredPosts.length === 0 && (
+                <p className="text-center text-muted-foreground py-12">
+                  No results found
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

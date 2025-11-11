@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
-import { getCurrentUser, setCurrentUser as saveCurrentUser } from '@/lib/mockData';
 import { API_URL, apiFetch } from '@/lib/api';
+import { normalizeUser } from '@/lib/mapper';
 
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   googleLoginUrl: string;
 }
@@ -16,70 +17,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try backend session
     (async () => {
       try {
         const data = await apiFetch('/api/users/me', { method: 'GET' });
-        setUser(data.user);
-        saveCurrentUser(data.user);
-      } catch {
-        const currentUser = getCurrentUser();
-        setUser(currentUser);
+        if (data?.user) {
+          setUser(normalizeUser(data.user));
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.warn('[Auth] Session fetch failed', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const data = await apiFetch('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-      setUser(data.user);
-      saveCurrentUser(data.user);
-    } catch {
-      const mockUser = getCurrentUser();
-      setUser(mockUser);
-      saveCurrentUser(mockUser);
-    }
+    const data = await apiFetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    setUser(normalizeUser(data.user));
   };
 
   const signup = async (name: string, email: string, password: string) => {
-    try {
-      const data = await apiFetch('/api/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify({ name, email, password }),
-      });
-      setUser(data.user);
-      saveCurrentUser(data.user);
-    } catch {
-      const newUser: User = {
-        id: Date.now().toString(),
-        name,
-        email,
-        bio: '',
-        profilePicture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-        followers: [],
-        following: [],
-        createdAt: new Date().toISOString(),
-      };
-      setUser(newUser);
-      saveCurrentUser(newUser);
-    }
+    const data = await apiFetch('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    });
+    setUser(normalizeUser(data.user));
   };
 
-  const logout = () => {
-    setUser(null);
-    saveCurrentUser(null);
+  const logout = async () => {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.warn('[Auth] logout failed', error);
+    } finally {
+      setUser(null);
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      saveCurrentUser(updatedUser);
       // best-effort backend sync
       apiFetch('/api/users/me', { method: 'PUT', body: JSON.stringify({
         name: updatedUser.name,
@@ -90,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, updateUser, googleLoginUrl: `${API_URL}/api/auth/google` }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser, googleLoginUrl: `${API_URL}/api/auth/google` }}>
       {children}
     </AuthContext.Provider>
   );

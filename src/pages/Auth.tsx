@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PenSquare } from 'lucide-react';
-import { API_URL } from '@/lib/api';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const location = useLocation();
+  const { login, signup, user, googleLoginUrl, loading } = useAuth();
   const { toast } = useToast();
 
   const [loginEmail, setLoginEmail] = useState('');
@@ -21,12 +21,18 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
 
+  useEffect(() => {
+    if (!loading && user) {
+      const redirectTo = (location.state as any)?.from || '/';
+      navigate(redirectTo, { replace: true });
+    }
+  }, [user, loading, navigate, location.state]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await login(loginEmail, loginPassword);
       toast({ title: 'Welcome back!' });
-      navigate('/');
     } catch (error) {
       toast({ title: 'Login failed', variant: 'destructive' });
     }
@@ -37,7 +43,6 @@ const Auth = () => {
     try {
       await signup(signupName, signupEmail, signupPassword);
       toast({ title: 'Account created successfully!' });
-      navigate('/');
     } catch (error) {
       toast({ title: 'Signup failed', variant: 'destructive' });
     }
@@ -89,10 +94,10 @@ const Auth = () => {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full">Sign In</Button>
+                  <Button type="submit" className="w-full" disabled={loading}>Sign In</Button>
                 </form>
                 <a
-                  href={`${API_URL}/api/auth/google`}
+                  href={googleLoginUrl}
                   className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm"
                 >
                   Continue with Google
@@ -132,10 +137,10 @@ const Auth = () => {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full">Create Account</Button>
+                  <Button type="submit" className="w-full" disabled={loading}>Create Account</Button>
                 </form>
                 <a
-                  href={`${API_URL}/api/auth/google`}
+                  href={googleLoginUrl}
                   className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm"
                 >
                   Continue with Google

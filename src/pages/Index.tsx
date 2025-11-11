@@ -9,9 +9,10 @@ import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { Loader2 } from 'lucide-react';
 
 const Index = () => {
-  const { posts, createPost, likePost } = usePosts();
+  const { posts, createPost, likePost, loading } = usePosts();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -102,16 +103,28 @@ const Index = () => {
           </Dialog>
         </div>
 
-        <div className="space-y-6">
-          {posts.map(post => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onLike={() => user && likePost(post.id, user.id)}
-              onComment={() => {}}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p>Loading your feed...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {posts.map(post => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onLike={() => user && likePost(post.id, user.id)}
+                onComment={() => {}}
+              />
+            ))}
+            {posts.length === 0 && (
+              <p className="text-center text-muted-foreground py-24">
+                No posts yet. Start by sharing your first story!
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

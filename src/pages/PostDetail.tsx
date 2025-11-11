@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, MessageCircle, Share2, ArrowLeft, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, ArrowLeft, Trash2, Loader2 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuth } from '@/context/AuthContext';
@@ -16,7 +16,7 @@ const PostDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { posts, likePost, addComment, deletePost } = usePosts();
-  const { getUserById } = useUsers();
+  const { getUserById, loading: usersLoading } = useUsers();
   const { user } = useAuth();
   const { toast } = useToast();
   const [commentText, setCommentText] = useState('');
@@ -26,11 +26,24 @@ const PostDetail = () => {
   const isLiked = user && post && post.likes.includes(user.id);
   const isAuthor = user && post && post.authorId === user.id;
 
-  if (!post || !author) {
+  if (!post) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container max-w-4xl py-8">
           <p className="text-center text-muted-foreground">Post not found</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (usersLoading || !author) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container max-w-4xl py-8">
+          <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground py-24">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p>Loading post details...</p>
+          </div>
         </div>
       </div>
     );

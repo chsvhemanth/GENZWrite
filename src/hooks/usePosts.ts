@@ -1,69 +1,91 @@
 import { useState, useEffect } from 'react';
 import { Post } from '@/types';
-import { mockPosts } from '@/lib/mockData';
+import { apiFetch } from '@/lib/api';
 
 export const usePosts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load from localStorage or use mock data
-    const stored = localStorage.getItem('posts');
-    const loadedPosts = stored ? JSON.parse(stored) : mockPosts;
-    setPosts(loadedPosts);
-    setLoading(false);
+    (async () => {
+      try {
+        const data = await apiFetch('/api/posts');
+        const mapped = (data.posts || []).map((p: any) => ({
+          id: p.id || p._id,
+          authorId: p.authorId,
+          title: p.title,
+          content: p.content,
+          tags: p.tags || [],
+          likes: p.likes || [],
+          comments: (p.comments || []).map((c: any) => ({
+            id: c.id || c._id,
+            userId: c.userId,
+            content: c.content,
+            createdAt: c.createdAt,
+          })),
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        })) as Post[];
+        setPosts(mapped);
+      } catch (e) {
+        console.error('[usePosts] fetch failed', e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const savePosts = (newPosts: Post[]) => {
-    setPosts(newPosts);
-    localStorage.setItem('posts', JSON.stringify(newPosts));
-  };
-
   const createPost = (post: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newPost: Post = {
-      ...post,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    savePosts([newPost, ...posts]);
-    return newPost;
+    return apiFetch('/api/posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: post.title,
+        content: post.content,
+        tags: post.tags,
+        attachments: [],
+      }),
+    }).then((data) => {
+      const p = data.post;
+      const mapped: Post = {
+        id: p.id || p._id,
+        authorId: p.authorId,
+        title: p.title,
+        content: p.content,
+        tags: p.tags || [],
+        likes: p.likes || [],
+        comments: [],
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      };
+      setPosts((cur) => [mapped, ...cur]);
+      return mapped;
+    });
   };
 
-  const updatePost = (id: string, updates: Partial<Post>) => {
-    const updated = posts.map(p =>
-      p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-    );
-    savePosts(updated);
-  };
+  const updatePost = (_id: string, _updates: Partial<Post>) => {};
 
-  const deletePost = (id: string) => {
-    savePosts(posts.filter(p => p.id !== id));
-  };
+  const deletePost = (_id: string) => {};
 
   const likePost = (postId: string, userId: string) => {
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-
-    const likes = post.likes.includes(userId)
-      ? post.likes.filter(id => id !== userId)
-      : [...post.likes, userId];
-
-    updatePost(postId, { likes });
+    setPosts((cur) =>
+      cur.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              likes: p.likes.includes(userId)
+                ? p.likes.filter((i) => i !== userId)
+                : [...p.likes, userId],
+            }
+          : p
+      )
+    );
   };
 
   const addComment = (postId: string, userId: string, content: string) => {
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-
-    const newComment = {
-      id: Date.now().toString(),
-      userId,
-      content,
-      createdAt: new Date().toISOString(),
-    };
-
-    updatePost(postId, { comments: [...post.comments, newComment] });
+    const newComment = { id: Date.now().toString(), userId, content, createdAt: new Date().toISOString() };
+    setPosts((cur) =>
+      cur.map((p) => (p.id === postId ? { ...p, comments: [...p.comments, newComment] } : p))
+    );
   };
 
   return {

@@ -9,6 +9,7 @@ const router = Router();
 
 // Local signup
 router.post('/signup', async (req, res) => {
+  console.log('[AUTH] /signup body:', req.body);
   const { name, email, password } = req.body;
   const existing = await User.findOne({ email });
   if (existing) return res.status(400).json({ message: 'Email already registered' });
@@ -21,6 +22,7 @@ router.post('/signup', async (req, res) => {
 
 // Local login
 router.post('/login', async (req, res) => {
+  console.log('[AUTH] /login body:', req.body);
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user || !user.passwordHash) return res.status(400).json({ message: 'Invalid credentials' });
@@ -74,6 +76,7 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 router.get('/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/auth?error=google` }),
   (req: any, res) => {
+    console.log('[AUTH] Google callback user:', req.user?.id);
     const token = signToken(req.user.id);
     res.cookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax' });
     res.redirect(`${process.env.CLIENT_URL}/`);

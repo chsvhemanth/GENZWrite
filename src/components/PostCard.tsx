@@ -5,9 +5,12 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageCircle, Share2 } from 'lucide-react';
 import { Post } from '@/types';
-import { useUsers } from '@/hooks/useUsers';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+import { apiFetch } from '@/lib/api';
+import { normalizeUser } from '@/lib/mapper';
+import { User } from '@/types';
 
 interface PostCardProps {
   post: Post;
@@ -16,9 +19,22 @@ interface PostCardProps {
 }
 
 export const PostCard = ({ post, onLike, onComment }: PostCardProps) => {
-  const { getUserById } = useUsers();
   const { user } = useAuth();
-  const author = getUserById(post.authorId);
+  const [author, setAuthor] = useState<User | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await apiFetch(`/api/users/${post.authorId}`);
+        if (alive) setAuthor(normalizeUser(data.user));
+      } catch {
+        setAuthor(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [post.authorId]);
   const isLiked = user && post.likes.includes(user.id);
 
   if (!author) return null;

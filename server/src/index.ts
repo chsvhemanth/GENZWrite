@@ -14,6 +14,7 @@ import uploadRoutes from './routes/uploads';
 import { Notification } from './models/Notification';
 import { authRequired, AuthRequest } from './middleware/auth';
 import 'express-async-errors';
+import { errorHandler, notFoundHandler, requestLogger } from './middleware/logger';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,6 +26,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 app.use(passport.initialize());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use(requestLogger);
 
 // routes
 app.use('/api/auth', authRoutes);
@@ -51,13 +53,36 @@ app.get('/api/notifications/stream', authRequired, async (req: AuthRequest, res)
   req.on('close', () => clearInterval(interval));
 });
 
+// 404 + error handler
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 // start
 async function start() {
-  await mongoose.connect(process.env.MONGODB_URI as string);
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error('[Startup] Missing MONGODB_URI. Set it in server/.env (see README.md).');
+    process.exit(1);
+  }
+  try {
+    await mongoose.connect(uri);
+    console.log('[MongoDB] Connected');
+  } catch (err) {
+    console.error('[MongoDB] Connection failed:', (err as Error).message);
+    console.error('URI in use:', uri.startsWith('mongodb+srv') ? '<mongodb+srv redacted>' : uri);
+    process.exit(1);
+  }
   app.listen(PORT, () => {
     console.log(`Server on http://localhost:${PORT}`);
   });
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[UnhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[UncaughtException]', err);
+});
 
 start().catch((e) => {
   console.error(e);

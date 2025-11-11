@@ -15,6 +15,7 @@ import PostDetail from "./pages/PostDetail";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import { NotificationsProvider } from "./context/NotificationsContext";
+import { RequireAuth } from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
 
@@ -29,13 +30,55 @@ const App = () => (
             <NotificationsProvider>
               <Navbar />
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route
+                  path="/"
+                  element={
+                    <RequireAuth>
+                      <Index />
+                    </RequireAuth>
+                  }
+                />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/profile/:id" element={<Profile />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/post/:id" element={<PostDetail />} />
+                <Route
+                  path="/profile/:id"
+                  element={
+                    <RequireAuth>
+                      <Profile />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/explore"
+                  element={
+                    <RequireAuth>
+                      <Explore />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <RequireAuth>
+                      <Notifications />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <RequireAuth>
+                      <Settings />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/post/:id"
+                  element={
+                    <RequireAuth>
+                      <PostDetail />
+                    </RequireAuth>
+                  }
+                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </NotificationsProvider>
